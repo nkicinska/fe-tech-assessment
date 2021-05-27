@@ -1,0 +1,122 @@
+// This is the base eslint config for all hx projects. PLEASE DO NOT ALTER THIS WITHOUT TALKING TO FRONTEND TEAM"
+// ESLint's files allow comments so don't worry about any linter errors you are getting here
+{
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": "./tsconfig.json"
+  },
+  "extends": ["airbnb-typescript", "prettier"],
+  "env": {
+    "browser": true,
+    "node": true,
+    "jest": true
+  },
+  "plugins": [
+    "react",
+    "jsx-a11y",
+    "import",
+    "prettier",
+    "react-hooks",
+    "@typescript-eslint"
+  ],
+  "root": true,
+  "rules": {
+    "linebreak-style": ["off"],
+    "no-restricted-globals": ["off"],
+    "no-unused-vars": ["off"],
+    "@typescript-eslint/no-unused-vars": ["error"],
+    "@typescript-eslint/no-throw-literal": ["off"],
+    // disable deprecated rule, is covered by naming-convention
+    "@typescript-eslint/camelcase": ["off"],
+    "@typescript-eslint/naming-convention": [
+      "error",
+      {
+        "selector": "default",
+        "format": ["PascalCase", "camelCase"],
+        "leadingUnderscore": "allow",
+        "filter": {
+          "regex": "^(_|__|_html|__html)$",
+          "match": false
+        }
+      },
+      {
+        "selector": "variable",
+        "format": ["PascalCase", "camelCase", "UPPER_CASE", "snake_case"],
+        "leadingUnderscore": "allow"
+      },
+      {
+        "selector": "parameter",
+        "format": ["PascalCase", "camelCase", "snake_case"],
+        "leadingUnderscore": "allow",
+        "filter": {
+          "regex": "^(_|__|_html|__html)$",
+          "match": false
+        }
+      },
+      {
+        "selector": ["typeLike", "enumMember"],
+        "format": ["PascalCase", "camelCase", "UPPER_CASE"]
+      },
+      {
+        "selector": "property",
+        "format": ["PascalCase", "camelCase", "snake_case", "UPPER_CASE"],
+        "leadingUnderscore": "allow",
+        "filter": {
+          "regex": "^(_|__|_html|__html)$",
+          "match": false
+        }
+      }
+    ],
+    "no-plusplus": [
+      "error",
+      {
+        "allowForLoopAfterthoughts": true
+      }
+    ],
+    "eqeqeq": ["error"],
+    "no-console": ["off"],
+    "jsx-a11y/anchor-is-valid": [
+      "error",
+      {
+        "components": ["Link"],
+        "specialLink": ["to"]
+      }
+    ],
+    "jsx-a11y/no-static-element-interactions": ["off"],
+    "jsx-a11y/click-events-have-key-events": ["off"],
+    "import/prefer-default-export": ["off"],
+    "react/jsx-filename-extension": [
+      1,
+      {
+        "extensions": [".js", ".tsx"]
+      }
+    ],
+    "react/prop-types": ["off"],
+    "react/no-unused-prop-types": ["off"],
+    "react/destructuring-assignment": [0],
+    "react/no-access-state-in-setstate": ["off"],
+    "react/no-array-index-key": ["off"],
+    "react/no-multi-comp": ["off"],
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn",
+    "react/require-default-props": "off",
+    "import/no-extraneous-dependencies": ["error"],
+    "react/jsx-props-no-spreading": "off",
+    "prefer-object-spread": "error",
+    "react/no-did-update-set-state": "off",
+    "max-classes-per-file": "off",
+    "react/state-in-constructor": "off",
+    "no-else-return": "off",
+    "no-use-before-define": "off",
+    "arrow-body-style": ["off"],
+    "import/no-unresolved": ["error", { "ignore": ["^@hyperexponential/"] }]
+  },
+  "overrides": [
+    {
+      "files": ["*.ts", "*.js"],
+      "rules": {
+        "@typescript-eslint/explicit-module-boundary-types": ["off"]
+      }
+    }
+  ]
+}
