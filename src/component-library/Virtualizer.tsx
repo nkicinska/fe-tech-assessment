@@ -1,52 +1,24 @@
-import React, { useCallback, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import styled from 'styled-components';
+import { checkNumberProp, checkNumberOrFunctionProp, checkFunctionProp, calculateTotalSize, flattenGrid } from "./utils";
+import { VirtualizerProps, Dimensions } from "./types";
 
-const checkNumberProp = (prop: any, fallback: number): number => {
-  if (typeof prop === "number") {
-    return prop;
-  } else {
-    return fallback;
-  }
-};
+const Container = styled.div<Dimensions>`
+  height: ${({ height }) => `${height}px`};
+  width: ${({ width }) => `${width}px`};
+  overflow: auto;
+`;
 
-const checkNumberOrFunctionProp = (
-  prop: any,
-  fallback: number
-): number | ((index: number) => number) => {
-  if (typeof prop === "number" || typeof prop === "function") {
-    return prop;
-  } else {
-    return fallback;
-  }
-};
+const Wrapper = styled.div<Dimensions>`
+  position: relative;
+  height: ${({ height }) => `${height}px`};
+  width: ${({ width }) => `${width}px`};
+  overflow: hidden;
+`;
 
-const checkFunctionProp = (
-  prop: any,
-  fallback: () => null
-): ((info: {
-  rowIndex: number;
-  columnIndex: number;
-  style: React.CSSProperties;
-}) => JSX.Element | null) => {
-  if (typeof prop === "function") {
-    return prop;
-  } else {
-    return fallback;
-  }
-};
+export const Virtualizer = React.memo<VirtualizerProps>((props) => {
+  const containerRef = useRef<HTMLDivElement>(null);
 
-export const Virtualizer = React.memo<{
-  numRows: number;
-  numColumns: number;
-  rowHeight: number | ((index: number) => number);
-  columnWidth: number | ((index: number) => number);
-  containerHeight: number;
-  containerWidth: number;
-  children: (info: {
-    rowIndex: number;
-    columnIndex: number;
-    style: React.CSSProperties;
-  }) => JSX.Element | null;
-}>((props) => {
   const numRows = checkNumberProp(props.numRows, 0);
   const numColumns = checkNumberProp(props.numColumns, 0);
   const rowHeight = checkNumberOrFunctionProp(props.rowHeight, 0);
@@ -55,95 +27,60 @@ export const Virtualizer = React.memo<{
   const containerWidth = checkNumberProp(props.containerWidth, 0);
   const children = checkFunctionProp(props.children, () => null);
 
-  const totalHeight =
-    typeof rowHeight === "number"
-      ? numRows * rowHeight
-      : new Array(numRows)
-          .fill(null)
-          .reduce<number>((acc, _, index) => acc + rowHeight(index), 0);
-  const totalWidth =
-    typeof columnWidth === "number"
-      ? numColumns * columnWidth
-      : new Array(numColumns)
-          .fill(null)
-          .reduce<number>((acc, _, index) => acc + columnWidth(index), 0);
-
   const [firstVisibleRow, setFirstVisibleRow] = useState(0);
   const [lastVisibleRow, setLastVisibleRow] = useState(0);
   const [firstVisibleColumn, setFirstVisibleColumn] = useState(0);
   const [lastVisibleColumn, setLastVisibleColumn] = useState(0);
 
-  const onScroll = useCallback<React.UIEventHandler<HTMLDivElement>>(
-    ({ currentTarget }) => {
-      const { scrollTop, scrollLeft } = currentTarget;
-      setFirstVisibleRow(Math.floor(scrollTop / rowHeight));
-      setLastVisibleRow(Math.floor((scrollTop + containerHeight) / rowHeight));
-      setFirstVisibleColumn(Math.floor(scrollLeft / columnWidth));
-      setLastVisibleColumn(
-        Math.floor((scrollLeft + containerWidth) / columnWidth)
-      );
-    },
-    []
-  );
+  const totalHeight = useMemo(() => calculateTotalSize(rowHeight, numRows), [numRows, rowHeight]);
+  const totalWidth = useMemo(() => calculateTotalSize(columnWidth, numColumns), [numColumns, columnWidth]);
+
+  const updatePosition = useCallback((scrollTop, scrollLeft) => {
+    if (typeof rowHeight !== 'number' || typeof columnWidth !== 'number') {
+      return;
+    }
+
+    setFirstVisibleRow(Math.floor(scrollTop / rowHeight));
+    setLastVisibleRow(Math.floor((scrollTop + containerHeight) / rowHeight));
+    setFirstVisibleColumn(Math.floor(scrollLeft / columnWidth));
+    setLastVisibleColumn(
+      Math.floor((scrollLeft + containerWidth) / columnWidth)
+    );
+  }, [rowHeight, columnWidth, containerHeight, containerWidth])
+
+  const getStyles = useCallback((rowIndex: number, columnIndex: number): React.CSSProperties => {
+    return {
+      position: 'absolute',
+      top: calculateTotalSize(rowHeight, rowIndex),
+      left: calculateTotalSize(columnWidth, columnIndex),
+      height: typeof rowHeight === "number" ? rowHeight : rowHeight(rowIndex),
+      width: typeof columnWidth === "number" ? columnWidth : columnWidth(columnIndex)
+    }
+  }, [rowHeight, columnWidth])
+
+  useEffect(() => {
+    updatePosition(containerRef.current?.scrollTop ?? 0, containerRef.current?.scrollLeft ?? 0);
+  }, [containerHeight, containerWidth, numRows, numColumns, rowHeight, columnWidth, updatePosition])
+
+  const handleScroll: React.UIEventHandler<HTMLDivElement> = ({ currentTarget }) => {
+    const { scrollTop, scrollLeft } = currentTarget;
+
+    updatePosition(scrollTop, scrollLeft);
+  }
+
+  const cells = flattenGrid(lastVisibleRow + 1 - firstVisibleRow, lastVisibleColumn + 1 - firstVisibleColumn);
 
   return (
-    <div
-      style={{
-        height: containerHeight,
-        width: containerWidth,
-        overflow: "auto",
-      }}
-      onScroll={onScroll}
-    >
-      <div
-        style={{
-          position: "relative",
-          height: totalHeight,
-          width: totalWidth,
-          overflow: "hidden",
-        }}
-      >
-        {new Array(lastVisibleRow + 1 - firstVisibleRow)
-          .fill(null)
-          .map((_, y) =>
-            new Array(lastVisibleColumn + 1 - firstVisibleColumn)
-              .fill(null)
-              .map((__, x) => {
-                const rowIndex = firstVisibleRow + y;
-                const columnIndex = firstVisibleColumn + x;
-                const style: React.CSSProperties = {
-                  position: "fixed",
-                  top:
-                    typeof rowHeight === "number"
-                      ? rowIndex * rowHeight
-                      : new Array(rowIndex)
-                          .fill(null)
-                          .reduce<number>(
-                            (acc, cur, index) => acc + rowHeight(index),
-                            0
-                          ),
-                  left:
-                    typeof columnWidth === "number"
-                      ? columnIndex * columnWidth
-                      : new Array(columnIndex)
-                          .fill(null)
-                          .reduce<number>(
-                            (acc, cur, index) => acc + columnWidth(index),
-                            0
-                          ),
-                  height:
-                    typeof rowHeight === "number"
-                      ? rowHeight
-                      : rowHeight(rowIndex),
-                  width:
-                    typeof columnWidth === "number"
-                      ? columnWidth
-                      : columnWidth(columnIndex),
-                };
-                return children({ rowIndex, columnIndex, style });
-              })
-          )}
-      </div>
-    </div>
+    <Container ref={containerRef} width={containerWidth} height={containerHeight} onScroll={handleScroll}>
+      <Wrapper width={totalWidth} height={totalHeight}>
+        {cells.map(({ y, x }) => {
+          const rowIndex = firstVisibleRow + y;
+          const columnIndex = firstVisibleColumn + x;
+          const style = getStyles(rowIndex, columnIndex);
+
+          return children({ columnIndex, rowIndex, style });
+        })}
+      </Wrapper>
+    </Container>
   );
 });
